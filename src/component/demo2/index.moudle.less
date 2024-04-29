@@ -1,0 +1,98 @@
+.kv {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .kv-img {
+    width: 100vw;
+    height: 30.4vw;
+    margin-top: 4px;
+  }
+  
+  .series-name {
+    position: absolute;
+    top: 20%;
+    left: 8%;
+    background-color: rgb(167, 169, 181);
+  }
+  
+  .series-name-above {
+    position: absolute;
+    bottom: 103%;
+    left: 0;
+    background-color: rgb(167, 169, 181);
+  }
+  
+  .series-img {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    width: 40%;
+    transform: translateY(-50%);
+  }
+  
+  .theme-title {
+    position: absolute;
+    top: 50%;
+    left: 30px;
+    transform: translateY(-50%);
+  }
+  
+  .title-info {
+    max-width: 50vw;
+    height: 42px;
+    overflow: hidden;
+    font-size: 18px;
+    font-weight: bolder;
+    line-height: 20px;
+    color: white;
+  
+    > div {
+      white-space: pre-line;
+    }
+  }
+  
+  .sub-title {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 14px;
+    color: #fff;
+    opacity: 0.5;
+  }
+  
+  .themeV2 {
+    display: flex;
+    align-items: center;
+    height: 23.5vw;
+    padding: 0 16px;
+    background-size: cover;
+  
+    .content {
+      flex: 1;
+      margin-right: 16px;
+    }
+  
+    .title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      height: 18px;
+      overflow: hidden;
+      font-size: 18px;
+      font-weight: 500;
+  
+      :global {
+        .mui-tag {
+          margin-left: 6px;
+        }
+      }
+    }
+  
+    .desc {
+      margin-top: 7px;
+      font-size: 12px;
+      line-height: 18px;
+      color: #606370;
+    }
+  }
+  
