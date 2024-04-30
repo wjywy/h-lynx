@@ -1,4 +1,4 @@
-import { Project, SourceFile, SyntaxKind, ElementAccessExpression, ts, JsxElement, PropertyAccessExpression } from "ts-morph";
+import { Project, SourceFile, SyntaxKind, ImportDeclaration, ElementAccessExpression, ts, JsxElement, PropertyAccessExpression, JsxSelfClosingElement, JsxOpeningElement, JsxClosingElement } from "ts-morph";
 import {fileOperation as fo} from './util/index';
 
 const porject = new Project({
@@ -7,6 +7,7 @@ const porject = new Project({
 
 class TranCssAndHtml {
     private sourceFiles: SourceFile[];
+    private iconNames: string[] = [];
 
     constructor(){
         // 获取引入styles的文件
@@ -19,6 +20,11 @@ class TranCssAndHtml {
             const ans = sourceFile.getFullText();
             console.log(ans);
         }
+    }
+
+    // 统一对import语句进行处理，提取有益信息
+    private async dealImportToSaveInfo () {
+
     }
 
     //统一对 Jsx 进行处理————主要涉及JsxExpression、JsxTag
@@ -85,7 +91,7 @@ class TranCssAndHtml {
             })
     }
 
-    // 将div自动转换view
+    // 将div自动转换view （可抽象函数——获取指定名称的标签）
     private async divToView (JsxElement: JsxElement) {
         const tagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxOpeningElement);
         const closeTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxClosingElement);
@@ -142,6 +148,63 @@ class TranCssAndHtml {
     //TODO:构造引入文件与less文件的less关系
 
     //TODO:ICON组件前后自动套一层view并将classname属性移入view
+    private addIconIntoView (JsxElement: JsxElement) {
+        const iconNames = this.iconNames;
+        const tagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxOpeningElement);
+        const closeTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxClosingElement);
+        const selfTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement);
+
+        [tagNames, closeTagNames, selfTagNames].forEach((commonTagNames) => {
+            commonTagNames.forEach((tagName) => {
+                if (iconNames.includes(tagName.getTagNameNode().getText())) {
+                    const classname = this.getTagClassname(tagName);
+                    const name = tagName.getTagNameNode();
+                    name.replaceWithText(`<view ${classname}>${tagName.getTagNameNode().getText()}</view>`);    
+                }
+            })
+        })
+    }
+
+    // 获取指定标签节点的classname信息
+    private getTagClassname(tagElement: JsxSelfClosingElement | JsxOpeningElement | JsxClosingElement) {
+        let ans: string = '';
+        const tagClassNames = tagElement.getDescendantsOfKind(SyntaxKind.JsxAttributes); // 获取标签的props
+
+        tagClassNames.forEach((tagClassName) => {
+            tagClassName.getDescendantsOfKind(SyntaxKind.Identifier).forEach((idenName) => {
+                if (idenName.getText() === 'className') {
+                    ans = tagClassName.getText();
+                }
+            })
+        })
+
+        return ans;
+    }
+
+    // 获取引入的icon组件的名称
+    private async getImportName (file: SourceFile) {
+        const importNames = file.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
+
+        const iconImports:  ImportDeclaration[] = [];
+        importNames.forEach((importName) => {
+            const names = importName.getDescendantsOfKind(SyntaxKind.StringLiteral);
+            names.forEach((name) => {
+                if (name.getText() === '@arco-design/iconbox-react-dcar-icon') {
+                    iconImports.push(importName);
+                }
+            })
+        })
+
+        const iconNames: string[] = [];
+        iconImports.forEach((iconImport) => {
+            const iconComNames = iconImport.getImportClause()?.getDescendantsOfKind(SyntaxKind.ImportSpecifier);
+            iconComNames?.forEach((iconComName) => {
+                iconNames.push(iconComName.getText());
+            })
+        })
+
+        this.iconNames = iconNames;
+    }
 
     //TODO:在打点标签处自动添加TeaWarpper组件
 }
