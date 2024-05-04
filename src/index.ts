@@ -32,13 +32,14 @@ class TranCssAndHtml {
 
     public async enter() {
         for (const sourceFile of this.sourceFiles) {
-            await this.tranUrl(sourceFile);
-            await this.deleteImportStatement(sourceFile, 'urlQuery');
+            await this.tranWindowToOpenview(sourceFile);
+            // await this.tranUrl(sourceFile);
+            // await this.deleteImportStatement(sourceFile, 'urlQuery');
             // await this.lynxGlobalToUrlquery(sourceFile);
-            await this.dealImportToSaveInfo(sourceFile);
-            await this.tranJsx(sourceFile);
+            // await this.dealImportToSaveInfo(sourceFile);
+            // await this.tranJsx(sourceFile);
             const ans = sourceFile.getFullText();
-            console.log(ans);
+            // console.log(ans);
         }
     }
 
@@ -336,6 +337,31 @@ class TranCssAndHtml {
         actions.forEach((item) => {
             item.remove(); // 移除指定语句
         })
+    }
+
+    // window.location.href 的转化
+    private async tranWindowToOpenview(file: SourceFile) {
+        let start: number = 0;
+        let mark = false;
+        let action: {expression:PropertyAccessExpression<ts.PropertyAccessExpression>, start: number}[] = [];
+        file.getDescendantsOfKind(SyntaxKind.ExpressionStatement).forEach((item) => {
+            item.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((expression) => {
+                if (expression.getText() === 'window.location.href') {
+                    mark = true
+                    start = item.getEnd(); // 获取行号
+                    action.unshift({expression: expression, start: start});
+                }
+            })
+        })
+        if (mark) {
+            // let all: {expression:PropertyAccessExpression<ts.PropertyAccessExpression>, start: number}[] = [];
+            action.forEach((item) => {
+                const { expression, start } = item;
+                expression.replaceWithText('newUrl');
+                file.insertText(start - 10, `openView(newUrl)\n`); // 插入待定，烦死了
+            })
+        }
+        console.log(file.getText(), 'ans');
     }
 }
 

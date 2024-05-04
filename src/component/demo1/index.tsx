@@ -49,6 +49,25 @@ const Index: React.FC = () => {
     }
   }
 
+  window.location.href = getUniversalUrl(
+    schema,
+    {
+      series_id,
+      sh_city_name: cityName || urlQuery.city_name || '北京',
+      sh_province_name: shProvinceName || urlQuery.sh_province_name || '',
+      year: carYear,
+      ...params,
+    },
+    {
+      hide_bar: 1,
+      hide_back_close: 1,
+      hide_status_bar: 1,
+      status_bar_color: 'black',
+      bounce_disable: 1,
+      adjust_resize_5497: 1,
+    }
+  )
+
   return (
     <div className={clsx(styles.container, hideIM && styles['container-no-im'])}>
       {!isWeixin && (
