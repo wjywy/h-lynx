@@ -9,6 +9,8 @@ import clsx from 'clsx'
 
 import styles from './index.moudle.less'
 
+const [placeholder, setPlaceholder] = useState(urlQuery.keyword || DEFAULT_PLACEHOLDER)
+
 const hideIM = urlQuery.hide_im === '1'
 
 const qaListTwo = [
@@ -41,7 +43,10 @@ const qaListTwo = [
 const Index: React.FC = () => {
   const [active, setActive] = React.useState<number | undefined>(0)
   const handleQaClick = (i: number) => () => {
-    setActive(prevI => (i === prevI ? undefined : i))
+    setActive(prevI => (i === prevI ? undefined : i));
+    if (isFirstPageRef.current) {
+      setKeyword(urlQuery.query || '')
+    }
   }
 
   return (

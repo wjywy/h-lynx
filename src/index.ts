@@ -1,4 +1,20 @@
-import { Project, SourceFile, SyntaxKind, ImportDeclaration, OptionalKind,JsxAttributeStructure,JsxSpreadAttributeStructure, ElementAccessExpression, ts, JsxElement, PropertyAccessExpression, JsxSelfClosingElement, JsxOpeningElement, JsxClosingElement } from "ts-morph";
+import {
+    Project,
+    SourceFile, 
+    SyntaxKind, 
+    ImportDeclaration,
+    OptionalKind,
+    JsxAttributeStructure,
+    JsxSpreadAttributeStructure, 
+    ElementAccessExpression, 
+    ts, 
+    JsxElement, 
+    PropertyAccessExpression, 
+    JsxSelfClosingElement, 
+    JsxOpeningElement, 
+    JsxClosingElement, 
+    Identifier
+} from "ts-morph";
 import {fileOperation as fo} from './util/index';
 
 const porject = new Project({
@@ -16,6 +32,9 @@ class TranCssAndHtml {
 
     public async enter() {
         for (const sourceFile of this.sourceFiles) {
+            await this.tranUrl(sourceFile);
+            await this.deleteImportStatement(sourceFile, 'urlQuery');
+            // await this.lynxGlobalToUrlquery(sourceFile);
             await this.dealImportToSaveInfo(sourceFile);
             await this.tranJsx(sourceFile);
             const ans = sourceFile.getFullText();
@@ -33,8 +52,8 @@ class TranCssAndHtml {
         const JsxElements = file.getDescendantsOfKind(SyntaxKind.JsxElement);
         // let a = 0;
         for (const JsxElement of JsxElements) {
-            await this.divToView(JsxElement);
-            await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
+            // await this.divToView(JsxElement);
+            // await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
             // await this.addTextIntoWord(JsxElement);
             // await this.reviseStyleClassname(JsxElement);
             // a++;
@@ -242,6 +261,12 @@ class TranCssAndHtml {
                 if(JsxElement.getOpeningElement().getTagNameNode().getText() === 'view') {
                     JsxElement.getOpeningElement().getFirstChildByKind(SyntaxKind.Identifier)?.rename('Teawrapper');
                 }
+                else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'image') {
+
+                }
+                else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'text') {
+
+                }
             }
         }
     }
@@ -252,6 +277,65 @@ class TranCssAndHtml {
         tagElement: JsxOpeningElement | JsxSelfClosingElement) 
     {   
         tagElement.addAttribute(attributeName);
+    }
+
+    // 添加url语句
+    private async tranUrl(file: SourceFile) {
+        const importData = file.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
+        const len = importData.length;
+        file.insertVariableStatement(len, { // 添加语句的规则
+            declarations: [
+                {
+                    name: 'urlQuery',
+                    initializer: 'lynx._globalProps.query',
+                }
+            ]
+        })
+    }
+
+    // urlQuery的全局替换
+    // private async lynxGlobalToUrlquery(file: SourceFile) {
+
+    //     // 获取urlQuery的值
+    //     let value: string = '';
+    //     file.getDescendantsOfKind(SyntaxKind.VariableDeclaration).forEach((statement) => {
+    //         if (statement.getName() === 'urlQuery') {
+    //            value = statement.getFirstChildByKind(SyntaxKind.PropertyAccessExpression)?.getText()!;
+    //         }
+    //     })
+
+    //     const urlQueryArr: Identifier[] = [];
+
+    //     file.getDescendantsOfKind(SyntaxKind.Identifier).forEach((element) => {
+    //         if (element.getText() === 'urlQuery') {
+    //             // element.rename(value);
+    //             urlQueryArr.unshift(element);
+    //         }
+    //     })
+
+    //     // console.log(url)
+    //     urlQueryArr.forEach((item, index) => {
+    //         if (item.getText() !== 'urlQuery') {
+    //             console.log(item.getText());
+    //             item.rename(value)
+    //         }
+    //     })
+    // }
+
+    // 删除import中的指定语句，参数为export出的值
+    private async deleteImportStatement(file: SourceFile, importName: string) {
+        const actions:  ImportDeclaration[] = []
+        file.getDescendantsOfKind(SyntaxKind.ImportDeclaration).forEach((item) => {
+            item.getDescendantsOfKind(SyntaxKind.ImportClause).forEach((clause) => {
+                if (clause.getText().includes(importName)) {
+                    actions.push(item);
+                }
+            })
+        })
+
+        actions.forEach((item) => {
+            item.remove(); // 移除指定语句
+        })
     }
 }
 
