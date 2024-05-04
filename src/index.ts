@@ -1,4 +1,4 @@
-import { Project, SourceFile, SyntaxKind, ImportDeclaration, ElementAccessExpression, ts, JsxElement, PropertyAccessExpression, JsxSelfClosingElement, JsxOpeningElement, JsxClosingElement } from "ts-morph";
+import { Project, SourceFile, SyntaxKind, ImportDeclaration, OptionalKind,JsxAttributeStructure,JsxSpreadAttributeStructure, ElementAccessExpression, ts, JsxElement, PropertyAccessExpression, JsxSelfClosingElement, JsxOpeningElement, JsxClosingElement } from "ts-morph";
 import {fileOperation as fo} from './util/index';
 
 const porject = new Project({
@@ -16,6 +16,7 @@ class TranCssAndHtml {
 
     public async enter() {
         for (const sourceFile of this.sourceFiles) {
+            await this.dealImportToSaveInfo(sourceFile);
             await this.tranJsx(sourceFile);
             const ans = sourceFile.getFullText();
             console.log(ans);
@@ -23,17 +24,21 @@ class TranCssAndHtml {
     }
 
     // 统一对import语句进行处理，提取有益信息
-    private async dealImportToSaveInfo () {
-
+    private async dealImportToSaveInfo (file: SourceFile) {
+        await this.getImportName(file);
     }
 
     //统一对 Jsx 进行处理————主要涉及JsxExpression、JsxTag
     private async tranJsx(file: SourceFile) {
         const JsxElements = file.getDescendantsOfKind(SyntaxKind.JsxElement);
+        // let a = 0;
         for (const JsxElement of JsxElements) {
             await this.divToView(JsxElement);
-            await this.addTextIntoWord(JsxElement);
-            await this.reviseStyleClassname(JsxElement);
+            await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
+            // await this.addTextIntoWord(JsxElement);
+            // await this.reviseStyleClassname(JsxElement);
+            // a++;
+            // await this.addIconIntoView(JsxElement); // 够了，是这里发生了重复渲染，原因是JsxElements属性有多个实例存在
         }
     }
 
@@ -148,36 +153,49 @@ class TranCssAndHtml {
     //TODO:构造引入文件与less文件的less关系
 
     //TODO:ICON组件前后自动套一层view并将classname属性移入view
-    private addIconIntoView (JsxElement: JsxElement) {
+    private async addIconIntoView (JsxElement: JsxElement) {
         const iconNames = this.iconNames;
+        // console.log(iconNames);
         const tagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxOpeningElement);
-        const closeTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxClosingElement);
+        // const closeTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxClosingElement);
         const selfTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement);
+        // console.log(tagNames.length);
+        // console.log(selfTagNames.length);
 
-        [tagNames, closeTagNames, selfTagNames].forEach((commonTagNames) => {
-            commonTagNames.forEach((tagName) => {
+        [tagNames, selfTagNames].forEach((commonTagNames) => {
+            // console.log(commonTagNames.)
+            commonTagNames.forEach((tagName, index) => {
+                // console.log(tagName.getText());
                 if (iconNames.includes(tagName.getTagNameNode().getText())) {
-                    const classname = this.getTagClassname(tagName);
+                    // iconNames.splice(index, 1); // 这里多次渲染出了问题
+                    const classname = this.getTagAttribue(tagName, 'className');
                     const name = tagName.getTagNameNode();
-                    name.replaceWithText(`<view ${classname}>${tagName.getTagNameNode().getText()}</view>`);    
+                    // if (classname.length > 6) {
+                        console.log(name.getText(), 'classname');
+                        tagName.replaceWithText(`<view ${classname}>${tagName.getText()}</view>`);  
+                    // }  
                 }
             })
         })
     }
 
-    // 获取指定标签节点的classname信息
-    private getTagClassname(tagElement: JsxSelfClosingElement | JsxOpeningElement | JsxClosingElement) {
+    // 获取指定标签节点的Attribute信息
+    private getTagAttribue(tagElement: JsxSelfClosingElement | JsxOpeningElement | JsxClosingElement, attributeName: string) {
         let ans: string = '';
-        const tagClassNames = tagElement.getDescendantsOfKind(SyntaxKind.JsxAttributes); // 获取标签的props
+
+        const tagClassNames = tagElement.getDescendantsOfKind(SyntaxKind.JsxAttribute); // 获取标签的props
 
         tagClassNames.forEach((tagClassName) => {
             tagClassName.getDescendantsOfKind(SyntaxKind.Identifier).forEach((idenName) => {
-                if (idenName.getText() === 'className') {
+                // console.log(tagClassName.getText());
+                if (idenName.getText() === attributeName) {
+                    // console.log('enter');
                     ans = tagClassName.getText();
                 }
             })
         })
 
+        // console.log(ans);
         return ans;
     }
 
@@ -189,16 +207,19 @@ class TranCssAndHtml {
         importNames.forEach((importName) => {
             const names = importName.getDescendantsOfKind(SyntaxKind.StringLiteral);
             names.forEach((name) => {
-                if (name.getText() === '@arco-design/iconbox-react-dcar-icon') {
+                if (name.getText() === "'@arco-design/iconbox-react-dcar-icon'") {
                     iconImports.push(importName);
                 }
             })
         })
 
+        // console.log(iconImports);
         const iconNames: string[] = [];
         iconImports.forEach((iconImport) => {
             const iconComNames = iconImport.getImportClause()?.getDescendantsOfKind(SyntaxKind.ImportSpecifier);
+
             iconComNames?.forEach((iconComName) => {
+                // console.log(iconComName.getText());
                 iconNames.push(iconComName.getText());
             })
         })
@@ -206,7 +227,32 @@ class TranCssAndHtml {
         this.iconNames = iconNames;
     }
 
+    // Tips: 更换identifer的值用rename
     //TODO:在打点标签处自动添加TeaWarpper组件
+      // 1. 检测出拥有log属性的标签   OK
+      // 2. 在标签外包一个TeaWarpper组件，并将log属性移到此组件内  
+      // 3. 假如打点标签是view，就将此view删除
+      // 4. 假如打点标签是text或者image，将在TeaWrapper内设置as属性
+    private async addTeaWarpperIntoLog(JsxElement: JsxElement, arrayAttribute: string[]) {
+        // 检测是否含有打点属性
+        const Jsx = JsxElement.getDescendantsOfKind(SyntaxKind.JsxAttributes)[0].getDescendantsOfKind(SyntaxKind.Identifier);
+
+        for (const tag of Jsx) {
+            if (arrayAttribute.includes(tag.getText())) {
+                if(JsxElement.getOpeningElement().getTagNameNode().getText() === 'view') {
+                    JsxElement.getOpeningElement().getFirstChildByKind(SyntaxKind.Identifier)?.rename('Teawrapper');
+                }
+            }
+        }
+    }
+
+    // 为标签添加属性
+    private addAttributeIntoTag(
+        attributeName: OptionalKind<JsxAttributeStructure> | OptionalKind<JsxSpreadAttributeStructure>, 
+        tagElement: JsxOpeningElement | JsxSelfClosingElement) 
+    {   
+        tagElement.addAttribute(attributeName);
+    }
 }
 
 const tran = new TranCssAndHtml();
