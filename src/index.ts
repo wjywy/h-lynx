@@ -13,7 +13,6 @@ import {
     JsxSelfClosingElement, 
     JsxOpeningElement, 
     JsxClosingElement, 
-    Identifier
 } from "ts-morph";
 import {fileOperation as fo} from './util/index';
 
@@ -32,14 +31,14 @@ class TranCssAndHtml {
 
     public async enter() {
         for (const sourceFile of this.sourceFiles) {
-            await this.tranWindowToOpenview(sourceFile);
+            // await this.tranWindowToOpenview(sourceFile);
             // await this.tranUrl(sourceFile);
             // await this.deleteImportStatement(sourceFile, 'urlQuery');
             // await this.lynxGlobalToUrlquery(sourceFile);
             // await this.dealImportToSaveInfo(sourceFile);
-            // await this.tranJsx(sourceFile);
+            await this.tranJsx(sourceFile);
             const ans = sourceFile.getFullText();
-            // console.log(ans);
+            console.log(ans);
         }
     }
 
@@ -53,8 +52,8 @@ class TranCssAndHtml {
         const JsxElements = file.getDescendantsOfKind(SyntaxKind.JsxElement);
         // let a = 0;
         for (const JsxElement of JsxElements) {
-            // await this.divToView(JsxElement);
-            // await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
+            await this.divToView(JsxElement);
+            await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
             // await this.addTextIntoWord(JsxElement);
             // await this.reviseStyleClassname(JsxElement);
             // a++;
@@ -263,10 +262,18 @@ class TranCssAndHtml {
                     JsxElement.getOpeningElement().getFirstChildByKind(SyntaxKind.Identifier)?.rename('Teawrapper');
                 }
                 else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'image') {
-
+                    const start = JsxElement.getOpeningElement().getEndLineNumber;
+                    JsxElement.getOpeningElement().insertAttribute(2, { // 这里的 start 的范围是【0，元素内部的属性的长度】 
+                        name: 'as',
+                        initializer: 'image'
+                    });
                 }
                 else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'text') {
-
+                    const start = JsxElement.getOpeningElement().getEndLineNumber();
+                    JsxElement.getOpeningElement().insertAttribute(start, {
+                        name: 'as',
+                        initializer: 'text'
+                    });
                 }
             }
         }
@@ -354,7 +361,6 @@ class TranCssAndHtml {
             })
         })
         if (mark) {
-            // let all: {expression:PropertyAccessExpression<ts.PropertyAccessExpression>, start: number}[] = [];
             action.forEach((item) => {
                 const { expression, start } = item;
                 expression.replaceWithText('newUrl');
