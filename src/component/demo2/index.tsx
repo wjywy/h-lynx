@@ -4,7 +4,7 @@ import { IconExclamationPoint } from '@arco-design/iconbox-react-dcar-icon'
 import { EmptyCardType } from '@lib/typing'
 import clsx from 'clsx'
 
-// import styles from './index.moudle.less'
+import styles from './index.moudle.less'
 
 import { jumpUrl } from '@lib/utils'
 

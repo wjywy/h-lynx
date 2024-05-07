@@ -2,13 +2,12 @@ import * as React from 'react'
 import { IconBack, IconDownTriangle, IconUpTriangle } from '@arco-design/iconbox-react-dcar-icon'
 
 import { ConfigProvider, NavigationBar } from '@byted-motor/mui'
-import { urlQuery } from '@byted-motor/url'
 import { Image, goBack, jsonStringify } from '@byted-motor/usedcar-common'
 import { isBytedance, isWeixin } from '@byted-motor/user-agent'
 import clsx from 'clsx'
 
-import styles from './index.moudle.less'
 
+let urlQuery = lynx._globalProps.query;
 const [placeholder, setPlaceholder] = useState(urlQuery.keyword || DEFAULT_PLACEHOLDER)
 
 const hideIM = urlQuery.hide_im === '1'
@@ -49,7 +48,7 @@ const Index: React.FC = () => {
     }
   }
 
-  window.location.href = getUniversalUrl(
+  const newUrl = getUniversalUrl(
     schema,
     {
       series_id,
@@ -66,10 +65,10 @@ const Index: React.FC = () => {
       bounce_disable: 1,
       adjust_resize_5497: 1,
     }
-  )
-
+  ) 
+ openViewV2(newUrl) 
   return (
-    <div className={clsx(styles.container, hideIM && styles['container-no-im'])}>
+    <view className={clsx(container, hideIM && 'container-no-im')}>
       {!isWeixin && (
         <NavigationBar
           immersion
@@ -79,14 +78,13 @@ const Index: React.FC = () => {
           scrollToShow
           leftAction={
             isBytedance && (
-              <IconBack
-                data-log-click={jsonStringify({
-                  obj_id: 'return_btn',
-                })}
-                className={styles.back}
-                onClick={goBack}
-                fill="#1f2129"
-              />
+              <view className={back}><IconBack
+                                  data-log-click={jsonStringify({
+                                    obj_id: 'return_btn',
+                                  })}
+                                  onClick={goBack}
+                                  fill="#1f2129"
+                                /></view>
             )
           }
         />
@@ -96,45 +94,45 @@ const Index: React.FC = () => {
         disableLoadingBackground
       />
       <Image
-        className={styles.item}
+        className={item}
         disableLoadingBackground
         src="https://p3.dcarimg.com/img/tos-cn-i-dcdx/ef99bfb0b91246f699a210ef0410808b~noop.image"
       />
       <Image
-        className={styles.item1}
+        className={item1}
         disableLoadingBackground
         src="https://p3.dcarimg.com/img/tos-cn-i-dcdx/29c8b62890cd48bf834978b049ff3e58~tplv-dcdx-origin.image"
       />
       <Image
-        className={styles.item3}
+        className={item3}
         disableLoadingBackground
         src="https://p3.dcarimg.com/img/tos-cn-i-dcdx/f32408a3de0e4281b94798adcf3cc1b8~noop.image"
       />
 
-      <div className={styles.qa} data-log-view={jsonStringify({ obj_id: 'faq_module' })}>
-        <div className={clsx('T4_S', styles.title)}>常见问题</div>
-        <div>
+      <view className={qa} data-log-view={jsonStringify({ obj_id: 'faq_module' })}>
+        <view className={clsx('T4_S', title)}><text>常见问题</text></view>
+        <view>
           {qaListTwo.map((qa, i) => (
-            <div className={styles.block} key={qa.q}>
-              <div
-                className={styles.head}
+            <view className={block} key={qa.q}>
+              <Teawrapper
+                className={head}
                 data-log-click={jsonStringify({
                   obj_id: 'faq_issue',
                   issue_title: qa.q,
                 })}
                 onClick={handleQaClick(i)}>
-                <div className={styles.left}>
-                  <span className={styles.circle} />
-                  <div className={clsx('T5', styles.name)}>{qa.q}</div>
-                </div>
-                {active === i ? <IconUpTriangle fontSize={14} /> : <IconDownTriangle fontSize={14} />}
-              </div>
-              {active === i && <div className={clsx('T5', styles.text)} dangerouslySetInnerHTML={{ __html: qa.a }}>{wujiayu.lss}</div>}
-            </div>
+                <view className={left}>
+                  <text className={circle} />
+                  <view className={clsx('T5', name)}><text>{{qa.q}}</text></view>
+                </view>
+                {active === i ? <view ><IconUpTriangle fontSize={14} /></view> : <view ><IconDownTriangle fontSize={14} /></view>}
+              </Teawrapper>
+              {active === i && <view className={clsx('T5', text)} dangerouslySetInnerHTML={{ __html: qa.a }}>{wujiayu.lss}</view>}
+            </view>
           ))}
-        </div>
-      </div>
-    </div>
+        </view>
+      </view>
+    </view>
   )
 }
 

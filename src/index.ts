@@ -17,10 +17,10 @@ import {
 import {fileOperation as fo} from './util/index';
 
 const porject = new Project({
-    tsConfigFilePath: './tsconfig.json'
+    tsConfigFilePath: './tran.config.json'
 });
 
-class TranCssAndHtml {
+export class TranCssAndHtml {
     private sourceFiles: SourceFile[];
     private iconNames: string[] = [];
     private deleteStatement: ExpressionStatement[] = [];
@@ -28,6 +28,8 @@ class TranCssAndHtml {
     constructor(){
         // 获取引入styles的文件
         this.sourceFiles = porject.getSourceFiles().filter((it) => it.getImportDeclaration('./index.moudle.less')?.getDefaultImport()?.getText() === 'styles');
+
+        // 获取指定文件夹——文件夹为必须参数，假如无此参数，则强制退出
     }
 
     public async enter() {
@@ -39,6 +41,7 @@ class TranCssAndHtml {
             await this.tranJsx(sourceFile);
             sourceFile.fixUnusedIdentifiers(); // 清除没用到的引用
             const ans = sourceFile.getFullText();
+            sourceFile.saveSync();
             console.log(ans, 'ans');
         }
     }
@@ -56,7 +59,7 @@ class TranCssAndHtml {
             await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
             await this.addTextIntoWord(JsxElement);
             await this.reviseStyleClassname(JsxElement);
-            await this.addIconIntoView(JsxElement); // 够了，是这里发生了重复渲染，原因是JsxElements属性有多个实例存在,可以参考转化文档
+            await this.addIconIntoView(JsxElement); 
         }
     }
 
@@ -125,12 +128,15 @@ class TranCssAndHtml {
                 if (tagName.getTagNameNode().getText() === 'div') {
                     const name = tagName.getTagNameNode();
                     name.replaceWithText('view');    
+                } else if (tagName.getTagNameNode().getText() === 'span') {
+                    const name = tagName.getTagNameNode();
+                    name.replaceWithText('text');    
                 }
             })
         })
     }
 
-    //:只为类型为 string 的变量或者字符串前后自动添加text组件(实验版，暂时只支持view)
+    //:只为类型为 string 的变量或者字符串前后自动添加text组件(实验版，暂时只支持view,后续添加为数组就OK)
     private async addTextIntoWord (JsxElement: JsxElement) {
             // div可以换为数组进行判断
             if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'view') {
@@ -164,11 +170,13 @@ class TranCssAndHtml {
         fo.getSymbolFilePath(moudleFilePath);
     }
 
-    //TODO:ICON组件前后自动套一层view并将classname属性移入view
+    //ICON组件前后自动套一层view并将classname属性移入view
     private async addIconIntoView (JsxElement: JsxElement) {
         const iconNames = this.iconNames;
+
         const tagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxOpeningElement);
         const selfTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement);
+
 
         [tagNames, selfTagNames].forEach((commonTagNames) => {
             commonTagNames.forEach((tagName) => {
@@ -232,7 +240,7 @@ class TranCssAndHtml {
     }
 
     // Tips: 更换identifer的值用rename
-    //TODO:在打点标签处自动添加TeaWarpper组件
+    //:在打点标签处自动添加TeaWarpper组件
       // 1. 检测出拥有log属性的标签   OK
       // 2. 在标签外包一个TeaWarpper组件，并将log属性移到此组件内  
       // 3. 假如打点标签是view，就将此view删除
@@ -331,8 +339,8 @@ class TranCssAndHtml {
         file.getDescendantsOfKind(SyntaxKind.ExpressionStatement).forEach((item, index) => {
             // 针对的 window.location.href=函数 的场景
             const all = item.getDescendantsOfKind(SyntaxKind.BinaryExpression)[0];
-            const right = all.getRight();
-            const left = all.getLeft();
+            const right = all?.getRight();
+            const left = all?.getLeft();
             item.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((expression) => {
                 if (expression.getText() === 'window.location.href') {
                     mark = true;
@@ -346,29 +354,25 @@ class TranCssAndHtml {
         if (mark) {
             action.forEach((item) => {
                 const {expression, right, left } = item;
-                
                 const start = left.getStart();
-
-                file.insertText(start, `const newUrl = ${right.getText()} \n`);
-
+                file.insertText(start, `const newUrl = ${right.getText()} \n openViewV2(newUrl) \n`);
                 deleteStatement.push(expression);
             })
 
             // 由于新增了节点，所以需要重新判断并删除原先节点
-            const ac: ExpressionStatement[] = []
+            const acs: ExpressionStatement[] = []
             file.getDescendantsOfKind(SyntaxKind.ExpressionStatement).forEach((item) => {
                 // 针对的 window.location.href=函数 的场景
                 item.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((expression) => {
                     if (expression.getText() === 'window.location.href') {
-                        ac.unshift(item);
+                        acs.unshift(item);
                     }
                 })
             })
 
-            ac.forEach((item) => {
-                item.remove();
+            acs.forEach((ac) => {
+                ac.remove();
             })
-
         }
     }
 }
