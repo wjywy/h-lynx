@@ -14,6 +14,7 @@ import {
     Expression,
     ExpressionStatement
 } from "ts-morph";
+import * as fs from 'fs';
 import {fileOperation as fo} from './util/index';
 
 const porject = new Project({
@@ -25,11 +26,20 @@ export class TranCssAndHtml {
     private iconNames: string[] = [];
     private deleteStatement: ExpressionStatement[] = [];
 
-    constructor(){
-        // 获取引入styles的文件
-        this.sourceFiles = porject.getSourceFiles().filter((it) => it.getImportDeclaration('./index.moudle.less')?.getDefaultImport()?.getText() === 'styles');
+    constructor (){
+        const compilerOptions = porject.getCompilerOptions();
+        const filePath = compilerOptions.configFilePath as string;
+        const tsConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
-        // 获取指定文件夹——文件夹为必须参数，假如无此参数，则强制退出
+        if (!tsConfig.include) {
+            throw Error('不符合要求，请确保配置文件中包含include属性');
+        }
+        // 获取引入styles的文件
+        this.sourceFiles = porject.getSourceFiles().filter((file) => file.getFilePath().endsWith('.tsx'));
+
+        if (this.sourceFiles.length === 0) {
+            throw Error('不符合要求，请确保配置中包含tsx文件夹');
+        }
     }
 
     public async enter() {
@@ -40,9 +50,9 @@ export class TranCssAndHtml {
             await this.dealImportToSaveInfo(sourceFile);
             await this.tranJsx(sourceFile);
             sourceFile.fixUnusedIdentifiers(); // 清除没用到的引用
-            const ans = sourceFile.getFullText();
             sourceFile.saveSync();
-            console.log(ans, 'ans');
+            // const ans = sourceFile.getFullText();
+            // console.log(ans, 'ans');
         }
     }
 
@@ -377,5 +387,3 @@ export class TranCssAndHtml {
     }
 }
 
-const tran = new TranCssAndHtml();
-tran.enter();

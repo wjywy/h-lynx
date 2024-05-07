@@ -9,6 +9,6 @@
       "declaration": true,
       "sourceMap": true
     },
-    "include": ["src/component/demo1"],
+    "include": ["src/component/demo1/*.tsx"],
     "exclude": ["node_modules", "dist"]
 }
