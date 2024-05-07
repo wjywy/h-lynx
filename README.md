@@ -11,7 +11,7 @@
 确认本地分支拥有 h-lynx 文件夹<br />之后你可以在 `package.json` 中添加 **script** 脚本
 ```json
 "scripts": {
-  "ca" : "node ./h-lynx/cli/bin.js" 
+  "tran" : "node ./h-lynx/cli/bin.js" 
 },
 ```
 如果想根据默认配置直接转换（默认配置为项目同级目录下的 `ts.config.json` 文件）， 需要在命令行中运行：<br />`pnpm run tran`<br />**Tip:**<br />由于实验阶段，本项目暂未开启默认配置，若想要实现转换功能，需要手动声明 `tran.config.json` 文件，其配置与参数与 `ts.config.json` 无异<br />需要注意的是，在实验阶段，必须要手动指定工具所覆盖的文件夹（也就是 `tran.config.json` 中的 `include` 字段），否则将会直接退出不予转换，
