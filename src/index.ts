@@ -3,9 +3,6 @@ import {
     SourceFile, 
     SyntaxKind, 
     ImportDeclaration,
-    OptionalKind,
-    JsxAttributeStructure,
-    JsxSpreadAttributeStructure, 
     ElementAccessExpression, 
     ts, 
     JsxElement, 
@@ -13,7 +10,9 @@ import {
     JsxSelfClosingElement, 
     JsxOpeningElement, 
     JsxClosingElement, 
-    JsxAttribute
+    JsxAttribute,
+    Expression,
+    ExpressionStatement
 } from "ts-morph";
 import {fileOperation as fo} from './util/index';
 
@@ -24,6 +23,7 @@ const porject = new Project({
 class TranCssAndHtml {
     private sourceFiles: SourceFile[];
     private iconNames: string[] = [];
+    private deleteStatement: ExpressionStatement[] = [];
 
     constructor(){
         // 获取引入styles的文件
@@ -37,6 +37,7 @@ class TranCssAndHtml {
             await this.deleteImportStatement(sourceFile, 'urlQuery');
             await this.dealImportToSaveInfo(sourceFile);
             await this.tranJsx(sourceFile);
+            sourceFile.fixUnusedIdentifiers(); // 清除没用到的引用
             const ans = sourceFile.getFullText();
             console.log(ans, 'ans');
         }
@@ -263,14 +264,6 @@ class TranCssAndHtml {
         }
     }
 
-    // 为标签添加属性
-    private addAttributeIntoTag(
-        attributeName: OptionalKind<JsxAttributeStructure> | OptionalKind<JsxSpreadAttributeStructure>, 
-        tagElement: JsxOpeningElement | JsxSelfClosingElement) 
-    {   
-        tagElement.addAttribute(attributeName);
-    }
-
     // 添加url语句
     private async tranUrl(file: SourceFile) {
         const importData = file.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
@@ -332,34 +325,50 @@ class TranCssAndHtml {
 
     // window.location.href 的转化
     private async tranWindowToOpenview(file: SourceFile) {
-        let start: number = 0;
         let mark = false;
-        let action: {expression:PropertyAccessExpression<ts.PropertyAccessExpression>, start: number}[] = [];
-        file.getDescendantsOfKind(SyntaxKind.ExpressionStatement).forEach((item) => {
+        let action: {expression: ExpressionStatement, right: Expression<ts.Expression>, left: Expression<ts.Expression>}[] = [];
+        const deleteStatement:ExpressionStatement[] = [];
+        file.getDescendantsOfKind(SyntaxKind.ExpressionStatement).forEach((item, index) => {
+            // 针对的 window.location.href=函数 的场景
+            const all = item.getDescendantsOfKind(SyntaxKind.BinaryExpression)[0];
+            const right = all.getRight();
+            const left = all.getLeft();
             item.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((expression) => {
                 if (expression.getText() === 'window.location.href') {
-                    mark = true
-                    start = item.getEndLineNumber(); // 获取行号
-                    const value = item.getExpression();
-                    console.log(value, 'value');
-                    action.unshift({expression: expression, start: start});
+                    mark = true;
+                    action.unshift({expression: item,  right: right, left: left});
+                    this.deleteStatement.unshift(item);
+                    deleteStatement.unshift(item);
                 }
             })
         })
+
         if (mark) {
             action.forEach((item) => {
-                const { expression, start } = item;
-                file.insertVariableStatement(start, {
-                    declarations: [
-                        {
-                            name: 'newUrl',
-                            initializer: ''
-                        }
-                    ]
-                })
-                expression.replaceWithText('newUrl');
-                file.insertText(start - 10, `openView(newUrl)\n`); // 插入待定，烦死了
+                const {expression, right, left } = item;
+                
+                const start = left.getStart();
+
+                file.insertText(start, `const newUrl = ${right.getText()} \n`);
+
+                deleteStatement.push(expression);
             })
+
+            // 由于新增了节点，所以需要重新判断并删除原先节点
+            const ac: ExpressionStatement[] = []
+            file.getDescendantsOfKind(SyntaxKind.ExpressionStatement).forEach((item) => {
+                // 针对的 window.location.href=函数 的场景
+                item.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((expression) => {
+                    if (expression.getText() === 'window.location.href') {
+                        ac.unshift(item);
+                    }
+                })
+            })
+
+            ac.forEach((item) => {
+                item.remove();
+            })
+
         }
     }
 }
