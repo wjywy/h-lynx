@@ -13,6 +13,7 @@ import {
     JsxSelfClosingElement, 
     JsxOpeningElement, 
     JsxClosingElement, 
+    JsxAttribute
 } from "ts-morph";
 import {fileOperation as fo} from './util/index';
 
@@ -31,14 +32,13 @@ class TranCssAndHtml {
 
     public async enter() {
         for (const sourceFile of this.sourceFiles) {
-            // await this.tranWindowToOpenview(sourceFile);
-            // await this.tranUrl(sourceFile);
-            // await this.deleteImportStatement(sourceFile, 'urlQuery');
-            // await this.lynxGlobalToUrlquery(sourceFile);
-            // await this.dealImportToSaveInfo(sourceFile);
+            await this.tranWindowToOpenview(sourceFile);
+            await this.tranUrl(sourceFile);
+            await this.deleteImportStatement(sourceFile, 'urlQuery');
+            await this.dealImportToSaveInfo(sourceFile);
             await this.tranJsx(sourceFile);
             const ans = sourceFile.getFullText();
-            console.log(ans);
+            console.log(ans, 'ans');
         }
     }
 
@@ -50,14 +50,12 @@ class TranCssAndHtml {
     //统一对 Jsx 进行处理————主要涉及JsxExpression、JsxTag
     private async tranJsx(file: SourceFile) {
         const JsxElements = file.getDescendantsOfKind(SyntaxKind.JsxElement);
-        // let a = 0;
         for (const JsxElement of JsxElements) {
             await this.divToView(JsxElement);
             await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
-            // await this.addTextIntoWord(JsxElement);
-            // await this.reviseStyleClassname(JsxElement);
-            // a++;
-            // await this.addIconIntoView(JsxElement); // 够了，是这里发生了重复渲染，原因是JsxElements属性有多个实例存在
+            await this.addTextIntoWord(JsxElement);
+            await this.reviseStyleClassname(JsxElement);
+            await this.addIconIntoView(JsxElement); // 够了，是这里发生了重复渲染，原因是JsxElements属性有多个实例存在,可以参考转化文档
         }
     }
 
@@ -131,7 +129,7 @@ class TranCssAndHtml {
         })
     }
 
-    //:只为类型为 string 的变量或者字符串前后自动添加text组件(实验版，暂时只支持div)
+    //:只为类型为 string 的变量或者字符串前后自动添加text组件(实验版，暂时只支持view)
     private async addTextIntoWord (JsxElement: JsxElement) {
             // div可以换为数组进行判断
             if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'view') {
@@ -165,34 +163,20 @@ class TranCssAndHtml {
         fo.getSymbolFilePath(moudleFilePath);
     }
 
-    //TODO: 将改动后的代码返回原文件
-
-    //TODO:自动copy代码至指定文件夹内，可配置导入规则
-
-    //TODO:构造引入文件与less文件的less关系
-
     //TODO:ICON组件前后自动套一层view并将classname属性移入view
     private async addIconIntoView (JsxElement: JsxElement) {
         const iconNames = this.iconNames;
-        // console.log(iconNames);
         const tagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxOpeningElement);
-        // const closeTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxClosingElement);
         const selfTagNames = JsxElement.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement);
-        // console.log(tagNames.length);
-        // console.log(selfTagNames.length);
 
         [tagNames, selfTagNames].forEach((commonTagNames) => {
-            // console.log(commonTagNames.)
-            commonTagNames.forEach((tagName, index) => {
-                // console.log(tagName.getText());
-                if (iconNames.includes(tagName.getTagNameNode().getText())) {
-                    // iconNames.splice(index, 1); // 这里多次渲染出了问题
-                    const classname = this.getTagAttribue(tagName, 'className');
-                    const name = tagName.getTagNameNode();
-                    // if (classname.length > 6) {
-                        console.log(name.getText(), 'classname');
+            commonTagNames.forEach((tagName) => {
+                    if (iconNames.includes(tagName.getTagNameNode().getText())) {
+                        this.iconNames = this.iconNames.filter((item) => {
+                            return item !== tagName.getTagNameNode().getText();
+                        })
+                        const classname = this.getTagAttribue(tagName, 'className');
                         tagName.replaceWithText(`<view ${classname}>${tagName.getText()}</view>`);  
-                    // }  
                 }
             })
         })
@@ -201,20 +185,22 @@ class TranCssAndHtml {
     // 获取指定标签节点的Attribute信息
     private getTagAttribue(tagElement: JsxSelfClosingElement | JsxOpeningElement | JsxClosingElement, attributeName: string) {
         let ans: string = '';
+        const actions: JsxAttribute[] = [];
 
         const tagClassNames = tagElement.getDescendantsOfKind(SyntaxKind.JsxAttribute); // 获取标签的props
 
         tagClassNames.forEach((tagClassName) => {
             tagClassName.getDescendantsOfKind(SyntaxKind.Identifier).forEach((idenName) => {
-                // console.log(tagClassName.getText());
                 if (idenName.getText() === attributeName) {
-                    // console.log('enter');
                     ans = tagClassName.getText();
+                    actions.push(tagClassName);
                 }
             })
         })
 
-        // console.log(ans);
+        actions.forEach((action) => {
+            action.remove(); // 移除Icon内的classname属性
+        })
         return ans;
     }
 
@@ -232,13 +218,11 @@ class TranCssAndHtml {
             })
         })
 
-        // console.log(iconImports);
         const iconNames: string[] = [];
         iconImports.forEach((iconImport) => {
             const iconComNames = iconImport.getImportClause()?.getDescendantsOfKind(SyntaxKind.ImportSpecifier);
 
             iconComNames?.forEach((iconComName) => {
-                // console.log(iconComName.getText());
                 iconNames.push(iconComName.getText());
             })
         })
@@ -262,16 +246,16 @@ class TranCssAndHtml {
                     JsxElement.getOpeningElement().getFirstChildByKind(SyntaxKind.Identifier)?.rename('Teawrapper');
                 }
                 else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'image') {
-                    const start = JsxElement.getOpeningElement().getEndLineNumber;
-                    JsxElement.getOpeningElement().insertAttribute(2, { // 这里的 start 的范围是【0，元素内部的属性的长度】 
-                        name: 'as',
+                    const start = JsxElement.getOpeningElement().getAttributes().length;
+                    JsxElement.getOpeningElement().insertAttribute(start, { // 这里的 start 的范围是【0，元素内部的属性的长度】 
+                        name: '\n as',
                         initializer: 'image'
                     });
                 }
                 else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'text') {
-                    const start = JsxElement.getOpeningElement().getEndLineNumber();
+                    const start = JsxElement.getOpeningElement().getAttributes().length;
                     JsxElement.getOpeningElement().insertAttribute(start, {
-                        name: 'as',
+                        name: '\n as',
                         initializer: 'text'
                     });
                 }
@@ -355,7 +339,9 @@ class TranCssAndHtml {
             item.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((expression) => {
                 if (expression.getText() === 'window.location.href') {
                     mark = true
-                    start = item.getEnd(); // 获取行号
+                    start = item.getEndLineNumber(); // 获取行号
+                    const value = item.getExpression();
+                    console.log(value, 'value');
                     action.unshift({expression: expression, start: start});
                 }
             })
@@ -363,11 +349,18 @@ class TranCssAndHtml {
         if (mark) {
             action.forEach((item) => {
                 const { expression, start } = item;
+                file.insertVariableStatement(start, {
+                    declarations: [
+                        {
+                            name: 'newUrl',
+                            initializer: ''
+                        }
+                    ]
+                })
                 expression.replaceWithText('newUrl');
                 file.insertText(start - 10, `openView(newUrl)\n`); // 插入待定，烦死了
             })
         }
-        console.log(file.getText(), 'ans');
     }
 }
 
