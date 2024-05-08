@@ -233,6 +233,7 @@ export class TranCssAndHtml {
             if (name === "'@arco-design/iconbox-react-dcar-icon'") {
                 iconImports.push(importName);
             }
+            // 根据映射关系，改变包名
             const newName = action.lodToNew(name);
             if (newName) {
                 importName.getModuleSpecifier().replaceWithText(newName);
@@ -297,35 +298,6 @@ export class TranCssAndHtml {
             ]
         })
     }
-
-    // urlQuery的全局替换
-    // private async lynxGlobalToUrlquery(file: SourceFile) {
-
-    //     // 获取urlQuery的值
-    //     let value: string = '';
-    //     file.getDescendantsOfKind(SyntaxKind.VariableDeclaration).forEach((statement) => {
-    //         if (statement.getName() === 'urlQuery') {
-    //            value = statement.getFirstChildByKind(SyntaxKind.PropertyAccessExpression)?.getText()!;
-    //         }
-    //     })
-
-    //     const urlQueryArr: Identifier[] = [];
-
-    //     file.getDescendantsOfKind(SyntaxKind.Identifier).forEach((element) => {
-    //         if (element.getText() === 'urlQuery') {
-    //             // element.rename(value);
-    //             urlQueryArr.unshift(element);
-    //         }
-    //     })
-
-    //     // console.log(url)
-    //     urlQueryArr.forEach((item, index) => {
-    //         if (item.getText() !== 'urlQuery') {
-    //             console.log(item.getText());
-    //             item.rename(value)
-    //         }
-    //     })
-    // }
 
     // 删除import中的指定语句，参数为export出的值
     private async deleteImportStatement(file: SourceFile, importName: string) {
