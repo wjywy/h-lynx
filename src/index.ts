@@ -15,7 +15,7 @@ import {
     ExpressionStatement
 } from "ts-morph";
 import * as fs from 'fs';
-import {fileOperation as fo} from './util/index';
+import {fileOperation as fo, action} from './util/index';
 
 const porject = new Project({
     tsConfigFilePath: './tran.config.json'
@@ -24,10 +24,10 @@ const porject = new Project({
 export class TranCssAndHtml {
     private sourceFiles: SourceFile[];
     private iconNames: string[] = [];
-    private deleteStatement: ExpressionStatement[] = [];
 
     constructor (){
         const compilerOptions = porject.getCompilerOptions();
+        console.log(compilerOptions, 'enter>>>')
         const filePath = compilerOptions.configFilePath as string;
         const tsConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
@@ -51,8 +51,8 @@ export class TranCssAndHtml {
             await this.tranJsx(sourceFile);
             sourceFile.fixUnusedIdentifiers(); // 清除没用到的引用
             sourceFile.saveSync();
-            // const ans = sourceFile.getFullText();
-            // console.log(ans, 'ans');
+            const ans = sourceFile.getFullText();
+            console.log(ans, 'ans');
         }
     }
 
@@ -223,18 +223,20 @@ export class TranCssAndHtml {
         return ans;
     }
 
-    // 获取引入的icon组件的名称
+    // 添加h5与lynx包的映射关系, 获取引入的icon组件的名称
     private async getImportName (file: SourceFile) {
         const importNames = file.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
 
         const iconImports:  ImportDeclaration[] = [];
         importNames.forEach((importName) => {
-            const names = importName.getDescendantsOfKind(SyntaxKind.StringLiteral);
-            names.forEach((name) => {
-                if (name.getText() === "'@arco-design/iconbox-react-dcar-icon'") {
-                    iconImports.push(importName);
-                }
-            })
+            const name = importName.getModuleSpecifier().getText();
+            if (name === "'@arco-design/iconbox-react-dcar-icon'") {
+                iconImports.push(importName);
+            }
+            const newName = action.lodToNew(name);
+            if (newName) {
+                importName.getModuleSpecifier().replaceWithText(newName);
+            }
         })
 
         const iconNames: string[] = [];
@@ -355,7 +357,6 @@ export class TranCssAndHtml {
                 if (expression.getText() === 'window.location.href') {
                     mark = true;
                     action.unshift({expression: item,  right: right, left: left});
-                    this.deleteStatement.unshift(item);
                     deleteStatement.unshift(item);
                 }
             })
@@ -387,3 +388,5 @@ export class TranCssAndHtml {
     }
 }
 
+const tran = new TranCssAndHtml();
+tran.enter();

@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { IconBack, IconDownTriangle, IconUpTriangle } from '@arco-design/iconbox-react-dcar-icon'
+import { IconBack, IconDownTriangle, IconUpTriangle } from '@byted-motor/lynx-icons'
 
-import { ConfigProvider, NavigationBar } from '@byted-motor/mui'
-import { Image, goBack, jsonStringify } from '@byted-motor/usedcar-common'
+import { ConfigProvider, NavigationBar } from '@byted-motor/lynx-mui'
+import { Image, goBack, jsonStringify } from '@src/utils'
 import { isBytedance, isWeixin } from '@byted-motor/user-agent'
 import clsx from 'clsx'
 
