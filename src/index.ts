@@ -12,10 +12,12 @@ import {
     JsxClosingElement, 
     JsxAttribute,
     Expression,
-    ExpressionStatement
+    ExpressionStatement,
+    QualifiedName
 } from "ts-morph";
 import * as fs from 'fs';
 import {fileOperation as fo, action} from './util/index';
+import { needAddTextTag, needAutoImport } from "./constant/name";
 
 const porject = new Project({
     tsConfigFilePath: './tran.config.json'
@@ -27,7 +29,7 @@ export class TranCssAndHtml {
 
     constructor (){
         const compilerOptions = porject.getCompilerOptions();
-        console.log(compilerOptions, 'enter>>>')
+        // console.log(compilerOptions, 'enter>>>')
         const filePath = compilerOptions.configFilePath as string;
         const tsConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
@@ -44,6 +46,11 @@ export class TranCssAndHtml {
 
     public async enter() {
         for (const sourceFile of this.sourceFiles) {
+            console.log(sourceFile.getFilePath(),' >>>');
+            sourceFile.insertImportDeclaration(1, {
+                namedImports: ['TeaWrapper'],
+                moduleSpecifier:'@byted-motor/lynx-utils'
+            })
             await this.tranWindowToOpenview(sourceFile);
             await this.tranUrl(sourceFile);
             await this.deleteImportStatement(sourceFile, 'urlQuery');
@@ -66,7 +73,7 @@ export class TranCssAndHtml {
         const JsxElements = file.getDescendantsOfKind(SyntaxKind.JsxElement);
         for (const JsxElement of JsxElements) {
             await this.divToView(JsxElement);
-            await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
+            const mark = await this.addTeaWarpperIntoLog(JsxElement, ['data-log-click'])
             await this.addTextIntoWord(JsxElement);
             await this.reviseStyleClassname(JsxElement);
             await this.addIconIntoView(JsxElement); 
@@ -94,7 +101,7 @@ export class TranCssAndHtml {
 
                 actions.forEach((action) => {
                     const {styleObj, value} = action;
-                    styleObj.replaceWithText(value);
+                    styleObj.replaceWithText(`"${value}"` );
                 })
             })
 
@@ -121,7 +128,7 @@ export class TranCssAndHtml {
                     // 获取节点与修改节点的逻辑需要分开编写，否则会报错
                     actions.forEach((action) => {
                         const {value, key} = action;
-                        value.replaceWithText(`${key}`);
+                        value.replaceWithText(`"${key}"`);
                     })
                 }
             })
@@ -141,15 +148,18 @@ export class TranCssAndHtml {
                 } else if (tagName.getTagNameNode().getText() === 'span') {
                     const name = tagName.getTagNameNode();
                     name.replaceWithText('text');    
+                } else if (tagName.getTagNameNode().getText() === 'img') {
+                    const name = tagName.getTagNameNode();
+                    name.replaceWithText('Image');
                 }
             })
         })
     }
 
-    //:只为类型为 string 的变量或者字符串前后自动添加text组件(实验版，暂时只支持view,后续添加为数组就OK)
+    //只为类型为 string 的变量或者字符串前后自动添加text组件
     private async addTextIntoWord (JsxElement: JsxElement) {
             // div可以换为数组进行判断
-            if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'view') {
+            if (needAddTextTag.includes(JsxElement.getOpeningElement().getTagNameNode().getText())) {
                 const JsxChildrens = JsxElement.getJsxChildren();
                 for (const JsxChildren of JsxChildrens) {
                     if (JsxChildren.isKind(SyntaxKind.JsxExpression)) {
@@ -228,11 +238,25 @@ export class TranCssAndHtml {
         const importNames = file.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
 
         const iconImports:  ImportDeclaration[] = [];
+        const clsxImports: ImportDeclaration[] = [];
+        const reactFunImports: ImportDeclaration[] = [];
         importNames.forEach((importName) => {
             const name = importName.getModuleSpecifier().getText();
+            // 策略模式改造(delay)
             if (name === "'@arco-design/iconbox-react-dcar-icon'") {
                 iconImports.push(importName);
             }
+
+            // console.log(name, '>>>');
+            if (name === "'clsx'") {
+                console.log(importName.getText(), 'clsx>>>');
+                clsxImports.push(importName);
+            }
+
+            if (name === "'react'") {
+                reactFunImports.push(importName);
+            }
+
             // 根据映射关系，改变包名
             const newName = action.lodToNew(name);
             if (newName) {
@@ -249,7 +273,54 @@ export class TranCssAndHtml {
             })
         })
 
+        clsxImports.forEach((clsxImport) => {
+            const clsxName = clsxImport.getImportClause()?.getDescendantsOfKind(SyntaxKind.Identifier);
+
+            clsxName?.forEach((item) => {
+                console.log(item.getText());
+                item.replaceWithText(`{${item.getText()}}`);
+            })
+        })
+
+        for (let reactFunImport of reactFunImports) {
+            reactFunImport.remove();
+            const importData = await this.getReactFun(file);
+            file.insertImportDeclaration(0, {
+                namedImports: [...importData],
+                moduleSpecifier:'@byted-lynx/react',
+            })
+        }
+
         this.iconNames = iconNames;
+    }
+
+    // 获取React.xxx
+    private async getReactFun(file: SourceFile) {
+        const reactUseApi: string[] = [];
+        const qualifiedNames = file.getDescendantsOfKind(SyntaxKind.QualifiedName);
+        const propertyAccessExpressions = file.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+        const actions: {
+            all: QualifiedName | PropertyAccessExpression<ts.PropertyAccessExpression>,
+            right: string
+        }[] = [];
+
+        [...qualifiedNames, ...propertyAccessExpressions].forEach((item) => {
+            const arr = item.getText().split('.');
+            if (needAutoImport.includes(arr[1])) {
+                actions.push({
+                    all: item,
+                    right: arr[1]
+                })
+                reactUseApi.push(arr[1]);
+            }
+        })
+
+        actions.forEach((action) => {
+            const {all, right} = action;
+            all.replaceWithText(right);
+        })
+
+        return Array.from(new Set(reactUseApi));
     }
 
     // Tips: 更换identifer的值用rename
@@ -259,13 +330,15 @@ export class TranCssAndHtml {
       // 3. 假如打点标签是view，就将此view删除
       // 4. 假如打点标签是text或者image，将在TeaWrapper内设置as属性
     private async addTeaWarpperIntoLog(JsxElement: JsxElement, arrayAttribute: string[]) {
+        let mark = false; // 是否拥有打点属性
         // 检测是否含有打点属性
         const Jsx = JsxElement.getDescendantsOfKind(SyntaxKind.JsxAttributes)[0].getDescendantsOfKind(SyntaxKind.Identifier);
 
         for (const tag of Jsx) {
             if (arrayAttribute.includes(tag.getText())) {
                 if(JsxElement.getOpeningElement().getTagNameNode().getText() === 'view') {
-                    JsxElement.getOpeningElement().getFirstChildByKind(SyntaxKind.Identifier)?.rename('Teawrapper');
+                    JsxElement.getOpeningElement().getFirstChildByKind(SyntaxKind.Identifier)?.rename('TeaWrapper');
+                    mark = true;
                 }
                 else if (JsxElement.getOpeningElement().getTagNameNode().getText() === 'image') {
                     const start = JsxElement.getOpeningElement().getAttributes().length;
@@ -283,17 +356,29 @@ export class TranCssAndHtml {
                 }
             }
         }
+        return mark;
     }
 
     // 添加url语句
     private async tranUrl(file: SourceFile) {
+        const actions: PropertyAccessExpression<ts.PropertyAccessExpression>[] = [];
+        // 替换全局的urlQuery为urlQuery?
+        file.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression).forEach((item) => {
+            if (item.getText().includes('urlQuery')) {
+                actions.unshift(item);
+            }
+        })
+        actions.forEach((action) => {
+                action.setHasQuestionDotToken(true)
+        })
+
         const importData = file.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
         const len = importData.length;
         file.insertVariableStatement(len, { // 添加语句的规则
             declarations: [
                 {
                     name: 'urlQuery',
-                    initializer: 'lynx._globalProps.query',
+                    initializer: 'lynx.__globalProps.queryItems',
                 }
             ]
         })
@@ -330,6 +415,12 @@ export class TranCssAndHtml {
                     mark = true;
                     action.unshift({expression: item,  right: right, left: left});
                     deleteStatement.unshift(item);
+
+                    // 插入import语句——getUniversalUrl
+                    file.insertImportDeclaration(1, {
+                        namedImports: ['getUniversalUrl'],
+                        moduleSpecifier: '@byted-motor/url',
+                    })
                 }
             })
         })
@@ -340,6 +431,12 @@ export class TranCssAndHtml {
                 const start = left.getStart();
                 file.insertText(start, `const newUrl = ${right.getText()} \n openViewV2(newUrl) \n`);
                 deleteStatement.push(expression);
+            })
+
+            // 插入openViewV2
+            file.insertImportDeclaration(1, {
+                namedImports: ['openViewV2'],
+                moduleSpecifier: 'common/src/jsb'
             })
 
             // 由于新增了节点，所以需要重新判断并删除原先节点
@@ -359,6 +456,3 @@ export class TranCssAndHtml {
         }
     }
 }
-
-const tran = new TranCssAndHtml();
-tran.enter();

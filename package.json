@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/lodash": "^4.17.0",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.12.7",
@@ -25,8 +26,10 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@lexmin0412/gcm": "^1.7.1",
     "cac": "^6.7.14",
     "chalk": "^4.1.2",
+    "express": "^4.19.2",
     "less": "^4.2.0",
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
