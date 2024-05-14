@@ -23,7 +23,7 @@ const porject = new Project({
     tsConfigFilePath: './tran.config.json'
 });
 
-// 测试
+// 测试s
 export class TranCssAndHtml {
     private sourceFiles: SourceFile[];
     private iconNames: string[] = [];
