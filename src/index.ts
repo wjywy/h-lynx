@@ -13,7 +13,8 @@ import {
     JsxAttribute,
     Expression,
     ExpressionStatement,
-    QualifiedName
+    QualifiedName,
+    JsxExpression
 } from "ts-morph";
 import * as fs from 'fs';
 import {fileOperation as fo, action} from './util/index';
@@ -59,7 +60,6 @@ export class TranCssAndHtml {
             sourceFile.fixUnusedIdentifiers(); // 清除没用到的引用
             sourceFile.saveSync();
             const ans = sourceFile.getFullText();
-            console.log(ans, 'ans');
         }
     }
 
@@ -109,9 +109,9 @@ export class TranCssAndHtml {
             JsxAttributes.forEach((jsxAttri) => {
                 const key = jsxAttri.getFirstChildByKind(SyntaxKind.Identifier); // 定义的节点
                 if (key?.getText() === 'className') {
-                    const values = jsxAttri.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression); // 获取表达式的值，比如 styles.xxx
+                    const values = jsxAttri.getDescendantsOfKind(SyntaxKind.JsxExpression); // 获取表达式的值，比如 styles.xxx
                     const actions: {
-                        value: PropertyAccessExpression<ts.PropertyAccessExpression>,
+                        value: JsxExpression,
                         key: string
                     }[] = [];
 
@@ -119,13 +119,15 @@ export class TranCssAndHtml {
                         const targets = value.getDescendantsOfKind(SyntaxKind.Identifier);
                         targets.forEach((target) => {
                             if (target?.getText() === 'styles') {
-                                const [_, key] = value.getText().split('.');
+                                let [_, key] = value.getText().split('.');
+                                key = key.replace('}', '');
                                 actions.push({value, key});
                             } 
                         })
                     })
 
                     // 获取节点与修改节点的逻辑需要分开编写，否则会报错
+                    // 补充：由于之前有大括号的存在，在转化之后，需要将大括号给删除
                     actions.forEach((action) => {
                         const {value, key} = action;
                         value.replaceWithText(`"${key}"`);
@@ -167,7 +169,7 @@ export class TranCssAndHtml {
                         // 成功进入
                         if (JsxChildren.getDescendantsOfKind(SyntaxKind.JsxElement).length === 0 && JsxChildren.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement).length === 0) {
                             if (JsxChildren.getExpression()?.getType().getText().includes('string')) {
-                                JsxChildren.replaceWithText(`<text>{${JsxChildren.getText()}}</text>`)
+                                JsxChildren.replaceWithText(`<text>${JsxChildren.getText()}</text>`)
                             }
                         }
                     }
@@ -244,7 +246,6 @@ export class TranCssAndHtml {
             }
 
             if (name === "'clsx'") {
-                console.log(importName.getText(), 'clsx>>>');
                 clsxImports.push(importName);
             }
 
@@ -272,7 +273,6 @@ export class TranCssAndHtml {
             const clsxName = clsxImport.getImportClause()?.getDescendantsOfKind(SyntaxKind.Identifier);
 
             clsxName?.forEach((item) => {
-                console.log(item.getText());
                 item.replaceWithText(`{${item.getText()}}`);
             })
         })
