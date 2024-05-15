@@ -30,7 +30,6 @@ export class TranCssAndHtml {
 
     constructor (){
         const compilerOptions = porject.getCompilerOptions();
-        // console.log(compilerOptions, 'enter>>>')
         const filePath = compilerOptions.configFilePath as string;
         const tsConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
@@ -143,13 +142,14 @@ export class TranCssAndHtml {
 
         [tagNames, closeTagNames, selfTagNames].forEach((commonTagNames) => {
             commonTagNames.forEach((tagName) => {
-                if (tagName.getTagNameNode().getText() === 'div') {
+                const hName = tagName.getTagNameNode().getText();
+                if (hName === 'div') {
                     const name = tagName.getTagNameNode();
                     name.replaceWithText('view');    
-                } else if (tagName.getTagNameNode().getText() === 'span') {
+                } else if (hName === 'span' || hName === 'p') {
                     const name = tagName.getTagNameNode();
                     name.replaceWithText('text');    
-                } else if (tagName.getTagNameNode().getText() === 'img') {
+                } else if (hName === 'img') {
                     const name = tagName.getTagNameNode();
                     name.replaceWithText('Image');
                 }
@@ -166,7 +166,7 @@ export class TranCssAndHtml {
                     if (JsxChildren.isKind(SyntaxKind.JsxExpression)) {
                         // 成功进入
                         if (JsxChildren.getDescendantsOfKind(SyntaxKind.JsxElement).length === 0 && JsxChildren.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement).length === 0) {
-                            if (JsxChildren.getExpression()?.getType().getText() === 'string') {
+                            if (JsxChildren.getExpression()?.getType().getText().includes('string')) {
                                 JsxChildren.replaceWithText(`<text>{${JsxChildren.getText()}}</text>`)
                             }
                         }
@@ -184,11 +184,6 @@ export class TranCssAndHtml {
                     }
                 }
             }
-    }
-
-    // 获取改动的tsx文件同级目录下指定后缀的文件
-    private async getSymbolFilePath(moudleFilePath: string[]) {
-        fo.getSymbolFilePath(moudleFilePath);
     }
 
     //ICON组件前后自动套一层view并将classname属性移入view
@@ -248,7 +243,6 @@ export class TranCssAndHtml {
                 iconImports.push(importName);
             }
 
-            // console.log(name, '>>>');
             if (name === "'clsx'") {
                 console.log(importName.getText(), 'clsx>>>');
                 clsxImports.push(importName);
