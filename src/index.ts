@@ -37,8 +37,8 @@ export class TranCssAndHtml {
         if (!tsConfig.include) {
             throw Error('不符合要求，请确保配置文件中包含include属性');
         }
-        // 获取引入styles的文件
-        this.sourceFiles = porject.getSourceFiles().filter((file) => file.getFilePath().endsWith('.tsx'));
+        // 获取引入指定后缀的文件
+        this.sourceFiles = porject.getSourceFiles().filter((file) => file.getFilePath().endsWith('.tsx') || file.getFilePath().endsWith('ts'));
 
         if (this.sourceFiles.length === 0) {
             throw Error('不符合要求，请确保配置中包含tsx文件夹');

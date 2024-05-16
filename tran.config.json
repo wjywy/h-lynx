@@ -9,7 +9,7 @@
       "declaration": true,
       "sourceMap": true
     },
-    "include": ["src/component/demo1/*.tsx"],
+    "include": ["src/component/demo1/"],
     "exclude": ["node_modules", "dist"],
     "wujiayu": false
 }
